@@ -1,3 +1,9 @@
+'''
+to run the stuff do this
+python simmer.py -sbr 1.0 -n_rows 240 -n_cols 320 -nphotons 1000 -n_tbins 2000 -coding Identity --account_irf --save_data_results --save_results
+
+
+'''
 import argparse
 import os
 import sys
@@ -29,7 +35,6 @@ parser.add_argument('--save_data_results', default=False, action='store_true', h
 args = parser.parse_args()
 max_path_length = args.max_transient_path_len
 
-
 ## Get coding ids and reconstruction algos and verify their lengths
 coding_ids = args.coding
 rec_algos_ids = args.rec
@@ -45,11 +50,13 @@ n_sbr_lvls = len(sbr_levels)
 
 # Parse input args
 n_tbins = args.n_tbins
+n_rows = args.n_rows
+n_cols = args.n_cols
 
 ## Set rep frequency depending on the domain of the simulated transient
 (rep_tau, rep_freq, tbin_res, t_domain, max_depth, tbin_depth_res) = tof_utils.calc_tof_domain_params(n_tbins, max_path_length=max_path_length)
 
-num_files_to_sim = 5
+num_files_to_sim = 1
 all_files = np.genfromtxt('NyuFiles.txt',dtype='str')
 fnames = all_files[np.random.randint(0,len(all_files),num_files_to_sim)]
 # fnames = all_files[0:num_files_to_sim]
@@ -73,12 +80,13 @@ for P in range(num_files_to_sim):
     [rgb,depth,h,w] = helpers.load_nyu(fnames[P])
     print("Simming: "+fnames[P])
     rgb = rgb.transpose((-2,-1,-3)).astype(np.float64)
-    rgb = resize(rgb,(240,320,3))
+    rgb = resize(rgb,(n_rows,n_cols,3))
     lumi = tof_utils.rgb2Lumi(rgb)
-    depth = resize(depth,(240,320))
+    depth = resize(depth,(n_rows,n_cols))
     (min_depth_val, max_depth_val) = plot_utils.get_good_min_max_range(depth[depth < max_depth])
     (min_depth_val, max_depth_val) = (min_depth_val*1000, max_depth_val*1000)
     delta_depth = 10 / (n_tbins-1) #Maximum depth in NYU is 10m
+    # delta_depth = max_depth_val /(n_tbins-1)
     # delta_depth = np.max(depth) / (n_tbins-1) #Set max depth to the max of the image
 
     (min_depth_error_val, max_depth_error_val ) = (0, 110)
@@ -136,11 +144,12 @@ for P in range(num_files_to_sim):
                 plot_utils.remove_ticks()
                 plot_utils.set_cbar(img)
                 plt.title("Decoded Depths")
-                plt.show
+                plt.show()
 
                 plt.figure()
                 img = plt.imshow(np.sum(np.squeeze(c_vals),2),cmap='gray')
                 plt.title("Grayscale from Histogram")
+                plt.show()
 
                 # out_data_base_dirpath = 'F:/Research/compressive-spad-lidar-cvpr22/data/nyu_results'
                 if(args.save_data_results):
