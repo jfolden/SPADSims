@@ -1,0 +1,13 @@
+{
+    "data_base_dirpath": ".\\data"
+    , "data_rel_dirpath": "cvpr22_data"
+    , "transient_images_dirpath": "cvpr22_data/rendered_images/transient_images_240x320_nt-2000"
+    , "rgb_images_dirpath": "cvpr22_data/rendered_images/rgb_images_240x320_nt-2000"
+    , "depth_images_dirpath": "cvpr22_data/rendered_images/depth_images_240x320_nt-2000"
+    , "results_base_dirpath": "results"
+    , "results_data_for_paper": "results_data"
+    , "results_data": "results_data"
+    , "results_dirpath": "results"
+    , "paper_results_dirpath": "results/raw_figures"
+    , "scan_data_base_dirpath": "cvpr22_data/scan_data"
+}
