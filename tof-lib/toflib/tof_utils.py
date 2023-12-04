@@ -158,7 +158,6 @@ def rgb2Lumi(rgb_img):
 	bL = rgb2Lin(B)
 	#calculate luminance
 	Y = rL*0.2126+gL*0.7152+bL*0.0722
-	print(Y.shape)
 	return(Y) 
 	
 
@@ -181,12 +180,11 @@ def depthmap2tirfLumi(depthmap, n_tbins, delta_depth,lumi):
 	'''
 	# Transform depths to non-zero indeces
 	nonzero_indeces = np.round(depthmap / delta_depth).astype(np.int)
-	print(np.max(nonzero_indeces))
 	tirf = np.zeros(depthmap.shape + (n_tbins,))
 	for i in range(tirf.shape[0]):
 		for j in range(tirf.shape[1]):
-			tirf[i,j,nonzero_indeces[i,j]] = lumi[i,j]
-	return tirf
+			tirf[i,j,nonzero_indeces[i,j]] = lumi[i,j]+0.15
+	return(tirf,nonzero_indeces)
 
 
 def get_time_domain(repetition_tau, n_tbins):

@@ -14,6 +14,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from IPython.core import debugger
 from skimage.transform import resize
+from datetime import datetime
 breakpoint = debugger.set_trace
 
 #### Local imports
@@ -26,6 +27,7 @@ from datasets import FlashLidarSceneData
 from simulate_flash_lidar_scene import get_scene_fname
 import eval_coding_utils
 import helpers
+import foveation
 
 parser = argparse.ArgumentParser(description='Parser for flash lidar simulation.')
 add_flash_lidar_scene_args(parser)
@@ -73,9 +75,13 @@ coding_list = coding_utils.init_coding_list(coding_ids, n_tbins, args, pulses_li
 rgbs = []
 depths = []
 transient_imgs = []
-
+curr_date = datetime.now()
+daymonthyear = curr_date.strftime("%m_%d_%Y")
 for P in range(num_files_to_sim):
-    out_data_base_dirpath = 'F:/Research/compressive-spad-lidar-cvpr22/data/nyu_results/{}'.format(10+P)
+    fnames_split0 = os.path.split(fnames[P])
+    fnames_split1 = os.path.split(fnames_split0[0]) 
+
+    out_data_base_dirpath = 'F:/Research/compressive-spad-lidar-cvpr22/data/nyu_results/{}/{}/{}'.format(daymonthyear,fnames_split1[1],fnames_split0[1][:-3])
 
     [rgb,depth,h,w] = helpers.load_nyu(fnames[P])
     print("Simming: "+fnames[P])
@@ -91,7 +97,10 @@ for P in range(num_files_to_sim):
 
     (min_depth_error_val, max_depth_error_val ) = (0, 110)
     #convert depth map to transient img
-    transients = tof_utils.depthmap2tirf(depth,n_tbins,delta_depth)
+    [transients,nz_ind] = tof_utils.depthmap2tirfLumi(depth,n_tbins,delta_depth,lumi)
+    print(nz_ind)
+    # transients = tof_utils.depthmap2tirf(depth,n_tbins,delta_depth)
+
     #append to storage
     transient_imgs.append(transients)
     rgbs.append(rgb)
@@ -117,6 +126,9 @@ for P in range(num_files_to_sim):
                 transient_img_sim = scene_obj.dtof_sim(mean_nphotons=curr_mean_nphotons, mean_sbr=curr_mean_sbr)
                 ## Encode
                 c_vals = coding_obj.encode(transient_img_sim)
+                [fovea_data,win_t_start] = foveation.fovea_window(window_size=100,histo=c_vals,nz_indi=nz_ind)
+                print(fovea_data.shape)
+                print(win_t_start)
                 # Estimate depths
                 decoded_depths = eval_coding_utils.decode_peak(coding_obj, c_vals, coding_id, rec_algo, pw_factor)*tbin_depth_res
                 ## Calc error metrics

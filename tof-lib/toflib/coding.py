@@ -129,6 +129,9 @@ class Coding(ABC):
 		Encode the transient image using the n_codes inside the self.C matrix
 		'''
 		assert(transient_img.shape[-1] == self.n_maxres), "Input c_vec does not have the correct dimensions"
+		L = np.matmul(transient_img[..., np.newaxis, :], self.C).squeeze(-2)
+		print('EncodeMatrix:{}'.format(L))
+		print('EncodeSize:{}'.format(L.shape))
 		return np.matmul(transient_img[..., np.newaxis, :], self.C).squeeze(-2)
 
 	def verify_input_c_vec(self, c_vec):
@@ -144,6 +147,8 @@ class Coding(ABC):
 		else: zero_norm_c_vec = c_vec
 		# If no input_C is provided use one of the existing ones
 		input_C = self.get_input_zn_C(input_C)
+		print('EncodeMatrix:{}'.format(input_C))
+		print('EncodeSize:{}'.format(input_C.shape))
 		# Perform zncc
 		return np.matmul(input_C, zero_norm_c_vec[..., np.newaxis]).squeeze(-1)
 
@@ -200,7 +205,9 @@ class Coding(ABC):
 		return np.matmul(softmax(beta*lookup, axis=-1), domain[:, np.newaxis]).squeeze(-1)
 
 	def maxgauss_peak_decoding(self, c_vec, gauss_sigma, rec_algo_id='zncc', **kwargs):
+		print(rec_algo_id)
 		lookup = self.reconstruction(c_vec, rec_algo_id, **kwargs)
+		print("Lookupshape: {}".format(lookup.shape))
 		return signalproc_ops.max_gaussian_center_of_mass_mle(lookup, sigma_tbins = gauss_sigma)
 
 	def zncc_depth_decoding(self, c_vec, input_C=None, c_vec_is_zero_norm=False):
