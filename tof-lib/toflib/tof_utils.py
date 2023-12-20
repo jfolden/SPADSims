@@ -167,19 +167,26 @@ def depthmap2tirf(depthmap, n_tbins, delta_depth):
 	'''
 	# Transform depths to non-zero indeces
 	nonzero_indeces = np.round(depthmap / delta_depth).astype(np.int)
-	print(np.max(nonzero_indeces))
+	print(np.max(depthmap))
+	print(delta_depth)
 	tirf = np.zeros(depthmap.shape + (n_tbins,))
 	for i in range(tirf.shape[0]):
 		for j in range(tirf.shape[1]):
 			tirf[i,j,nonzero_indeces[i,j]] = 1.
-	return tirf
+	return (tirf,nonzero_indeces)
 
 def depthmap2tirfLumi(depthmap, n_tbins, delta_depth,lumi):
 	'''
 		Take each pixel of a depth image and turn it into a 1D delta temporal impulse response. The delta will be located according to the depth value.  
 	'''
 	# Transform depths to non-zero indeces
+	# print('DepthSize:{}'.format(np.max(depthmap)))
+
 	nonzero_indeces = np.round(depthmap / delta_depth).astype(np.int)
+	print(np.max(depthmap))
+	print(delta_depth)
+	# print('nonzero:{}'.format(np.max(nonzero_indeces)))
+
 	tirf = np.zeros(depthmap.shape + (n_tbins,))
 	for i in range(tirf.shape[0]):
 		for j in range(tirf.shape[1]):

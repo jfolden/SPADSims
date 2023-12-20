@@ -85,20 +85,19 @@ for P in range(num_files_to_sim):
 
     [rgb,depth,h,w] = helpers.load_nyu(fnames[P])
     print("Simming: "+fnames[P])
-    rgb = rgb.transpose((-2,-1,-3)).astype(np.float64)
+    rgb = rgb.astype(np.float64)
     rgb = resize(rgb,(n_rows,n_cols,3))
     lumi = tof_utils.rgb2Lumi(rgb)
     depth = resize(depth,(n_rows,n_cols))
     (min_depth_val, max_depth_val) = plot_utils.get_good_min_max_range(depth[depth < max_depth])
     (min_depth_val, max_depth_val) = (min_depth_val*1000, max_depth_val*1000)
     delta_depth = 10 / (n_tbins-1) #Maximum depth in NYU is 10m
-    # delta_depth = max_depth_val /(n_tbins-1)
+    # delta_depth = max_depth_val / (n_tbins-1)
     # delta_depth = np.max(depth) / (n_tbins-1) #Set max depth to the max of the image
 
     (min_depth_error_val, max_depth_error_val ) = (0, 110)
     #convert depth map to transient img
     [transients,nz_ind] = tof_utils.depthmap2tirfLumi(depth,n_tbins,delta_depth,lumi)
-    print(nz_ind)
     # transients = tof_utils.depthmap2tirf(depth,n_tbins,delta_depth)
 
     #append to storage
@@ -124,17 +123,33 @@ for P in range(num_files_to_sim):
                 curr_mean_sbr = X_sbr_levels[j, k]
                 curr_mean_nphotons = Y_nphotons_levels[j, k]
                 transient_img_sim = scene_obj.dtof_sim(mean_nphotons=curr_mean_nphotons, mean_sbr=curr_mean_sbr)
+
                 ## Encode
                 c_vals = coding_obj.encode(transient_img_sim)
-                [fovea_data,win_t_start] = foveation.fovea_window(window_size=100,histo=c_vals,nz_indi=nz_ind)
-                print(fovea_data.shape)
-                print(win_t_start)
+                [fovea_data,win_t_start] = foveation.fovea_window(window_size=20,histo=c_vals,nz_indi=nz_ind)
+                fovea_full = foveation.gen_full_sig(fovea_data,win_t_start,n_tbins)
+                ds_value = 200
+                (rep_tau_ds, rep_freq_ds, tbin_res_ds, t_domain_ds, max_depth_ds, tbin_depth_res_ds) = tof_utils.calc_tof_domain_params(n_tbins, max_path_length=max_path_length)
+
+                ds_full = foveation.downsample_hist(c_vals,ds_value)
+                ds_fovea = foveation.fovea_downsample(fovea_data,ds_value)
+                ds_fovea = foveation.gen_full_sig(ds_fovea,win_t_start,n_tbins)
+
+
                 # Estimate depths
                 decoded_depths = eval_coding_utils.decode_peak(coding_obj, c_vals, coding_id, rec_algo, pw_factor)*tbin_depth_res
+                decoded_depths_windows = eval_coding_utils.decode_peak(coding_obj, fovea_full, coding_id, rec_algo, pw_factor)*tbin_depth_res
+                # depths_fovea_full = eval_coding_ultils.deocde_peak(coding_obj,ds_full,)
+
                 ## Calc error metrics
                 abs_depth_errors = np.abs(decoded_depths.squeeze() - depths[P])*1000
+                abs_depth_errors_window = np.abs(decoded_depths_windows.squeeze() - depths[P])*1000
                 error_metrics = np_utils.calc_error_metrics(abs_depth_errors, delta_eps = tbin_depth_res*1000)
+                error_metrics_window = np_utils.calc_error_metrics(abs_depth_errors, delta_eps = tbin_depth_res*1000)
                 np_utils.print_error_metrics(error_metrics)
+                print('Window Error Metrics: ')
+                np_utils.print_error_metrics(error_metrics)
+
                 ## Plot depths and depth errors
                 plt.clf()
                 plt.subplot(2,2,1)
@@ -163,6 +178,16 @@ for P in range(num_files_to_sim):
                 plt.title("Grayscale from Histogram")
                 plt.show()
 
+                plt.figure()
+                img = plt.imshow(np.sum(np.squeeze(ds_full),2),cmap='gray')
+                plt.title("Grayscale from Full Res Downsample")
+                plt.show()
+
+                plt.figure()
+                img = plt.imshow(np.sum(np.squeeze(ds_fovea),2),cmap='gray')
+                plt.title("Grayscale from Window Res Downsample")
+                plt.show()
+
                 # out_data_base_dirpath = 'F:/Research/compressive-spad-lidar-cvpr22/data/nyu_results'
                 if(args.save_data_results):
                     print("Saving result Data, this may take a while......")
@@ -189,10 +214,9 @@ for P in range(num_files_to_sim):
 					
                 if(args.save_results):
                     print("Saving Results...")
-                    sim_params_str = '{}_np-{:.2f}_sbr-{:.2f}'.format(P, curr_mean_nphotons, curr_mean_sbr)
+                    sim_params_str = '{}_np-{:.2f}_sbr-{:.2f}'.format(P,curr_mean_nphotons, curr_mean_sbr)
                     out_dirpath = os.path.join(out_data_dirpath, sim_params_str)
                     coding_params_str = eval_coding_utils.compose_coding_params_str(coding_id, coding_obj.n_codes, rec_algo, pw_factor)
-
                     plt.figure()
                     plot_utils.update_fig_size(height=5, width=6)
                     img=plt.imshow(decoded_depths.squeeze()*1000, vmin=min_depth_val, vmax=max_depth_val)
@@ -211,6 +235,12 @@ for P in range(num_files_to_sim):
 
                     plt.figure()
                     img = plt.imshow(np.sum(np.squeeze(c_vals),2),cmap='gray')
+                    plot_utils.remove_ticks()
+                    plt.title("Grayscale from Histogram")
+                    plot_utils.save_currfig(dirpath=out_dirpath, filename=coding_params_str+'_histGS', file_ext='png')
+
+                    plt.figure()
+                    img = plt.imshow(np.sum(np.squeeze(fovea_data),2),cmap='gray')
                     plot_utils.remove_ticks()
                     plt.title("Grayscale from Histogram")
                     plot_utils.save_currfig(dirpath=out_dirpath, filename=coding_params_str+'_histGS', file_ext='png')
