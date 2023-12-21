@@ -60,12 +60,15 @@ def gen_full_sig_ds(fovea_data,win_t_start,nt_bins,full_bin_res,ds_bin_res):
     '''
     Generate the full signal from the downsampled fovea window 
     '''
+    start_depth = win_t_start * full_bin_res
+    win_bin_depths = np.arange(0,nt_bins,1) * ds_bin_res
     
     #Create signal zero every where except where the window lies
     full_sig = np.zeros((fovea_data.shape[0],fovea_data.shape[1],nt_bins))
     for i in range(fovea_data.shape[0]):
         for j in range(fovea_data.shape[1]):
-            full_sig[i,j,win_t_start[i,j]:win_t_start[i,j]+fovea_data.shape[-1]] = fovea_data[i,j,:]
+            idx = (np.abs(win_bin_depths-start_depth[i,j])).argmin()
+            full_sig[i,j,idx:idx+fovea_data.shape[-1]] = fovea_data[i,j,:]
 
     return(full_sig)
 

@@ -167,8 +167,6 @@ def depthmap2tirf(depthmap, n_tbins, delta_depth):
 	'''
 	# Transform depths to non-zero indeces
 	nonzero_indeces = np.round(depthmap / delta_depth).astype(np.int)
-	print(np.max(depthmap))
-	print(delta_depth)
 	tirf = np.zeros(depthmap.shape + (n_tbins,))
 	for i in range(tirf.shape[0]):
 		for j in range(tirf.shape[1]):
@@ -183,8 +181,6 @@ def depthmap2tirfLumi(depthmap, n_tbins, delta_depth,lumi):
 	# print('DepthSize:{}'.format(np.max(depthmap)))
 
 	nonzero_indeces = np.round(depthmap / delta_depth).astype(np.int)
-	print(np.max(depthmap))
-	print(delta_depth)
 	# print('nonzero:{}'.format(np.max(nonzero_indeces)))
 
 	tirf = np.zeros(depthmap.shape + (n_tbins,))

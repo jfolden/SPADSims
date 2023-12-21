@@ -12,6 +12,7 @@ sys.path.append('..\ZoeDepth')
 from zoedepth.models.builder import build_model
 from zoedepth.utils.config import get_config
 from zoedepth.utils.misc import colorize, save_raw_16bit,pil_to_batched_tensor
+import torch.nn as nn
 
 def get_p_i(r_i):
     B = len(r_i)
@@ -154,6 +155,45 @@ def create_gs(histogram):
     image = np.sum(np.squeeze(histogram),axis=-1).astype(np.uint8())
     return(image)
 
+"""
+ERROR METRICS
+
+"""
+
+class RunningAverage:
+    def __init__(self):
+        self.avg = 0
+        self.count = 0
+
+    def append(self, value):
+        self.avg = (value + self.count * self.avg) / (self.count + 1)
+        self.count += 1
+
+    def get_value(self):
+        return self.avg
+    
+class RunningAverageDict:
+    """A dictionary of running averages."""
+    def __init__(self):
+        self._dict = None
+
+    def update(self, new_dict):
+        if new_dict is None:
+            return
+
+        if self._dict is None:
+            self._dict = dict()
+            for key, value in new_dict.items():
+                self._dict[key] = RunningAverage()
+
+        for key, value in new_dict.items():
+            self._dict[key].append(value)
+
+    def get_value(self):
+        if self._dict is None:
+            return None
+        return {key: value.get_value() for key, value in self._dict.items()}
+
 def compute_errors(gt, pred):
     """Compute metrics for 'pred' compared to 'gt'
 
@@ -196,6 +236,59 @@ def compute_errors(gt, pred):
     return dict(a1=a1, a2=a2, a3=a3, abs_rel=abs_rel, rmse=rmse, log_10=log_10, rmse_log=rmse_log,
                 silog=silog, sq_rel=sq_rel)
 
+def compute_metrics(gt, pred, interpolate=True, garg_crop=False, eigen_crop=True, dataset='nyu', min_depth_eval=0.1, max_depth_eval=10, **kwargs):
+    """Compute metrics of predicted depth maps. Applies cropping and masking as necessary or specified via arguments. Refer to compute_errors for more details on metrics.
+    """
+    if 'config' in kwargs:
+        config = kwargs['config']
+        garg_crop = config.garg_crop
+        eigen_crop = config.eigen_crop
+        min_depth_eval = config.min_depth_eval
+        max_depth_eval = config.max_depth_eval
+
+    if gt.shape[-2:] != pred.shape[-2:] and interpolate:
+        pred = torch.from_numpy(pred)
+        if len(pred.shape) == 2:
+            pred = pred.unsqueeze(0).unsqueeze(0)
+        elif len(pred.shape) == 3:
+            pred = pred.unsqueeze(0)
+        pred = nn.functional.interpolate(
+            pred, gt.shape[-2:], mode='bilinear', align_corners=True)
+        pred = pred.squeeze().cpu().numpy()
+
+    pred = pred.squeeze()
+    pred[pred < min_depth_eval] = min_depth_eval
+    pred[pred > max_depth_eval] = max_depth_eval
+    pred[np.isinf(pred)] = max_depth_eval
+    pred[np.isnan(pred)] = min_depth_eval
+
+    gt_depth = gt.squeeze()
+    valid_mask = np.logical_and(
+        gt_depth > min_depth_eval, gt_depth < max_depth_eval)
+
+    if garg_crop or eigen_crop:
+        gt_height, gt_width = gt_depth.shape
+        eval_mask = np.zeros(valid_mask.shape)
+
+        if garg_crop:
+            eval_mask[int(0.40810811 * gt_height):int(0.99189189 * gt_height),
+                      int(0.03594771 * gt_width):int(0.96405229 * gt_width)] = 1
+
+        elif eigen_crop:
+            # print("-"*10, " EIGEN CROP ", "-"*10)
+            if dataset == 'kitti':
+                eval_mask[int(0.3324324 * gt_height):int(0.91351351 * gt_height),
+                          int(0.0359477 * gt_width):int(0.96405229 * gt_width)] = 1
+            else:
+                # assert gt_depth.shape == (480, 640), "Error: Eigen crop is currently only valid for (480, 640) images"
+                eval_mask[45:471, 41:601] = 1
+        else:
+            eval_mask = np.ones(valid_mask.shape)
+    valid_mask = np.logical_and(valid_mask, eval_mask)
+    return compute_errors(gt_depth[valid_mask], pred[valid_mask])
+
+
+
 
 class optSelect:
     def __init__(self, image):
@@ -212,7 +305,7 @@ class optSelect:
 
     def optimize_pixel_locations(self, N):
         height, width = self.image.shape[:2]
-        kmeans = KMeans(n_clusters=N, random_state=np.random.randint(0,10e3,1))
+        kmeans = KMeans(n_clusters=N, random_state=666)
 
         coords_flat = np.column_stack(np.unravel_index(np.arange(height * width), (height, width)))
         kmeans.fit(coords_flat)
@@ -228,10 +321,10 @@ class optSelect:
 def local_scale(gt,pred,n_pts):
     opt = optSelect(gt)
     coords = opt.optimize_pixel_locations(n_pts)
-    gt_values = gt(coords[:,0],coords[:,1])
-    pred_values = pred(coords[:,0],coords[:,1])
+    gt_values = gt[coords[:,0],coords[:,1]]
+    pred_values = pred[coords[:,0],coords[:,1]]
 
-    poly_coef = np.polyfit(pred_values,gt_values,3)
+    poly_coef = np.polyfit(pred_values,gt_values,2)
     curve = np.poly1d(poly_coef)
 
     return(curve)
