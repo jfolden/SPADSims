@@ -290,7 +290,7 @@ def saveResults(dataDict,saveData,savePlots,out_data_base_dirpath,file_name):
                 # if dataDict.get("mono_raw") != None:
                 plt.figure()
                 plot_utils.update_fig_size(height=5, width=6)
-                img=plt.imshow(dataDict["mono_raw"]*1000, vmin=0, vmax=np.max(dataDict["mono_raw"])*1000)
+                img=plt.imshow(dataDict["mono_raw"]*1000, vmin=min_depth_val, vmax=max_depth_val)
                 plot_utils.remove_ticks()
                 plot_utils.set_cbar(img, cbar_orientation='horizontal')
                 plot_utils.save_currfig(dirpath=out_dirpath, filename='monocular_depth', file_ext='png')

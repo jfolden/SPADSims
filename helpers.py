@@ -8,7 +8,7 @@ from PIL import Image
 from sklearn.cluster import KMeans
 from scipy.optimize import minimize
 
-sys.path.append('..\ZoeDepth')
+sys.path.append('../ZoeDepth')
 from zoedepth.models.builder import build_model
 from zoedepth.utils.config import get_config
 from zoedepth.utils.misc import colorize, save_raw_16bit,pil_to_batched_tensor

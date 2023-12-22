@@ -55,7 +55,7 @@ args = parser.parse_args()
 num_files_to_sim = args.n_imgs
 num_images_to_save = int(np.ceil(num_files_to_sim * args.save_percent / 100))
 
-all_files = np.genfromtxt('NyuFiles_val.txt',dtype='str')
+all_files = np.genfromtxt('Nyu_val.txt',dtype='str')
 fnames = all_files[np.random.randint(0,len(all_files),num_files_to_sim)]
 # fnames[0] = "C:\\Users\\Justin\\tensorflow_datasets\\downloads\\extracted\\NYUv2\\nyudepthv2\\train\\dining_room_0019\\00216.h5"
 # fnames = ["C:\\Users\\Justin\\tensorflow_datasets\\downloads\\extracted\\NYUv2\\nyudepthv2\\train\\bedroom_0113\\00641.h5",
@@ -92,7 +92,7 @@ for P in tqdm(range(num_files_to_sim),desc="Total Sim"):
     fnames_split0 = os.path.split(fnames[P])
     fnames_split1 = os.path.split(fnames_split0[0]) 
     
-    out_data_base_dirpath = 'F:/Research/compressive-spad-lidar-cvpr22/data/nyu_results/{}/{checks}'.format(daymonthyear,
+    out_data_base_dirpath = '/home/UFAD/jfolden/SPADSims/data/nyu_results/{}/{checks}'.format(daymonthyear,
                                                                                                             checks="win{}_dsbins{}/".format(args.win_size,args.ds_bins) 
                                                                                                             if (args.mem_fovea and args.depth_fovea) 
                                                                                                             else "")# "win{}".format(args.win_size)
