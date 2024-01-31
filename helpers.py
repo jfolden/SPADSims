@@ -4,6 +4,7 @@ import h5py
 import torch
 import numpy as np
 import sys
+import os
 from PIL import Image
 from sklearn.cluster import KMeans
 from scipy.optimize import minimize
@@ -151,8 +152,15 @@ def monoDepth(model,rgb):
 
     return(raw_depth,colorized_depth)
 
-def create_gs(histogram):
+def create_gs(histogram,uint):
     image = np.sum(np.squeeze(histogram),axis=-1).astype(np.uint8())
+    if uint:
+        import matplotlib.pyplot as plt
+        from matplotlib.colors import Normalize
+        cmap = plt.get_cmap('gray')
+        norm = Normalize()
+        image = norm(image)
+        image = (image[:,:,:-1]*255).astype(np.uint8)
     return(image)
 
 """
@@ -320,6 +328,8 @@ class optSelect:
 
 def local_scale(gt,pred,n_pts):
     opt = optSelect(gt)
+    pred = np.clip(pred,a_min=0,a_max=10)
+    print(np.max(pred))
     coords = opt.optimize_pixel_locations(n_pts)
     gt_values = gt[coords[:,0],coords[:,1]]
     pred_values = pred[coords[:,0],coords[:,1]]
@@ -328,3 +338,102 @@ def local_scale(gt,pred,n_pts):
     curve = np.poly1d(poly_coef)
 
     return(curve)
+
+def load_carla_data(npz_path):
+    """
+    Load variables from an .npz file.
+
+    Parameters:
+    - npz_path: Path to the .npz file.
+
+    Returns:
+    - variables: Dictionary containing variable names and their corresponding values.
+    """
+    try:
+        with np.load(npz_path) as npz_file:
+            carla_rgb = npz_file['rgb_buffer']  # Replace with the actual variable name
+            carla_flow = npz_file['flow_buffer']  # Replace with the actual variable name
+            carla_depth = npz_file['depth_buffer']  # Replace with the actual variable name
+            
+            
+
+        return carla_rgb, carla_flow, carla_depth
+    except Exception as e:
+        print(f"Error loading .npz file: {e}")
+        return None
+    
+def calc_prev_pixel(optical_flow):
+    """
+    Calculate the pixel locations of the previous frame based on optical flow vectors.
+
+    Parameters:
+    - optical_flow: Optical flow image (numpy array with shape (height, width, 2)).
+
+    Returns:
+    - previous_frame_locations: Pixel locations of the previous frame (numpy array with shape (height, width, 2)).
+    """
+    # Extract optical flow vectors
+    flow_x, flow_y = optical_flow[:, :, 0], optical_flow[:, :, 1]
+    # flow_x = flow_x.astype(int)
+    # flow_y = flow_y.astype(int)
+    # Create grid of pixel coordinates
+    height, width = optical_flow.shape[:2]
+    grid_x, grid_y = np.meshgrid(np.arange(width), np.arange(height))
+
+    # Calculate previous frame locations
+    prev_x = np.clip((grid_x + flow_x),a_min=0,a_max=width-1)
+
+    prev_y = np.clip((grid_y + flow_y),a_min=0,a_max=height-1)
+
+    # Stack the results along the last axis to get the final array
+    
+    previous_frame_locations = np.stack((prev_x, prev_y), axis=-1).astype(int)
+
+    return previous_frame_locations
+
+
+def calc_prev_pixel_cv2(optical_flow):
+    """
+    Calculate the pixel locations of the previous frame based on optical flow vectors.
+
+    Parameters:
+    - optical_flow: Optical flow image (numpy array with shape (height, width, 2)).
+
+    Returns:
+    - previous_frame_locations: Pixel locations of the previous frame (numpy array with shape (height, width, 2)).
+    """
+    height = optical_flow.shape[0]
+    width = optical_flow.shape[1]
+    previous_frame_locations = optical_flow
+    previous_frame_locations[:,:,0] += np.arange(width)
+    previous_frame_locations[:,:,1] += np.arange(height)[:,np.newaxis]
+
+    return previous_frame_locations
+
+
+def get_npy_paths(folder_path):
+    import glob
+    """
+    Get a list of file names ending with .npy in the specified folder.
+
+    Parameters:
+    - folder_path: Path to the folder.
+
+    Returns:
+    - npy_file_names: List of file names ending with .npy.
+    """
+    npy_file_names = glob.glob(os.path.join(folder_path, '*.npy'))
+    return npy_file_names
+
+def calculate_optical_flow(prev_frame, curr_frame):
+    import cv2
+    # Ensure frames are grayscale
+    prev_gray = cv2.cvtColor(prev_frame, cv2.COLOR_BGR2GRAY)
+    curr_gray = cv2.cvtColor(curr_frame, cv2.COLOR_BGR2GRAY)
+
+    # Calculate optical flow
+    # flow = cv2.calcOpticalFlowFarneback(curr_gray, prev_gray, None, 0.5, 3, 10, 5, 3, 1.2, 0)
+    flow = cv2.calcOpticalFlowFarneback(curr_gray, prev_gray, None, 0.1, 5, 10, 5, 5, 0.19, 0)
+
+
+    return flow

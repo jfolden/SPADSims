@@ -16,6 +16,7 @@ def add_flash_lidar_scene_args( parser ):
 	parser.add_argument('-n_cols', type=int, default = 160, help='Number of cols')
 	parser.add_argument('-n_tbins', type=int, default = 2000, help='Number of tbins')
 	parser.add_argument('-max_transient_path_len', type=float, default = 20, help='Max path length simulated in the transient in meters. This means that the last element in the transient corresponds to a signal that traveled this distance. The max depth will be 0.5 of this value')
+	parser.add_argument('-max_depth', type=float, default=10, help = 'Max depth of the scene in meters')
 	parser.add_argument('--directonly', default=False, action='store_true', help='Use scene with direct only component.')
 	parser.add_argument('-scene_id', type=str, required=False, help='ID of scene to simulate')
 	parser.add_argument('-view_id', type=int, default = 0, help='ID of view of scene')

@@ -30,8 +30,8 @@ import helpers
 import foveation
 
 def simSPAD(args,**kwargs):
-
-    max_path_length = args.max_transient_path_len
+    max_depth_input = args.max_depth
+    max_path_length = 2*max_depth_input
 
     ## Get coding ids and reconstruction algos and verify their lengths
     coding_ids = args.coding
@@ -50,11 +50,12 @@ def simSPAD(args,**kwargs):
     n_tbins = args.n_tbins
     n_rows = args.n_rows
     n_cols = args.n_cols
-    print("Number of total bins = {} ".format(n_tbins))
+    # print("Number of total bins = {} ".format(n_tbins))
 
     ## Set rep frequency depending on the domain of the simulated transient
     (rep_tau, rep_freq, tbin_res, t_domain, max_depth, tbin_depth_res) = tof_utils.calc_tof_domain_params(n_tbins, max_path_length=max_path_length)
-    # print(tbin_depth_res)
+    # print(f'tbindepth_res{tbin_depth_res}')
+    # print(f'max_depth:{max_depth}')
     ## Create GT gaussian pulses for each coding. Different coding may use different pulse widths
     pulses_list = tirf.init_gauss_pulse_list(n_tbins, pw_factors*tbin_res, mu=0, t_domain=t_domain)
 
@@ -75,7 +76,7 @@ def simSPAD(args,**kwargs):
     depth = resize(depth,(n_rows,n_cols))
     (min_depth_val, max_depth_val) = plot_utils.get_good_min_max_range(depth[depth < max_depth])
     (min_depth_val, max_depth_val) = (min_depth_val*1000, max_depth_val*1000)
-    delta_depth = 10 / (n_tbins-1) #Maximum depth in NYU is 10m
+    delta_depth = max_depth_input / (n_tbins-1) #Maximum depth in NYU is 10m
     # delta_depth = max_depth_val / (n_tbins-1)
     # print(np.max(depth))
     # delta_depth = np.max(depth) / (n_tbins-1) #Set max depth to the max of the image
@@ -89,7 +90,9 @@ def simSPAD(args,**kwargs):
 
     #create the sim objects
     transient_obj = tirf.TemporalIRF(pulses_list[0].apply(transients), t_domain=t_domain)
-    scene_obj = tirf_scene.ToFScene(transient_obj, rgb)
+    # scene_obj = tirf_scene.ToFScene(transient_obj,rgb)
+    no_ambiant = np.ones_like(rgb)*1e-6
+    scene_obj = tirf_scene.ToFScene(transient_obj,no_ambiant)
 
 
 
@@ -117,7 +120,7 @@ def simSPAD(args,**kwargs):
                 ## Calc error metrics
                 abs_depth_errors = np.abs(decoded_depths.squeeze() - depth)*1000
                 error_metrics = np_utils.calc_error_metrics(abs_depth_errors, delta_eps = tbin_depth_res*1000)
-                np_utils.print_error_metrics(error_metrics)
+                # np_utils.print_error_metrics(error_metrics)
 
                 dataDict = {"decoded_depths": decoded_depths,
                                 'abs_depth_errors': abs_depth_errors,
@@ -194,7 +197,7 @@ def plotResults(dataDict):
         plt.show()
 
 
-def saveResults(dataDict,saveData,savePlots,out_data_base_dirpath,file_name):
+def saveResults(dataDict,saveData,savePlots,out_data_base_dirpath,exper_type,file_name):
         plt.rcParams['image.cmap']='plasma'
 
         rgb = dataDict['rgb_imgs']
@@ -211,16 +214,18 @@ def saveResults(dataDict,saveData,savePlots,out_data_base_dirpath,file_name):
         coding_id = dataDict['coding_id']
         rec_algo = dataDict['rec']
         pw_factor = dataDict['pw_factor']
+        coding_obj = dataDict['coding_obj']
 
 
 
-        out_data_dirpath = os.path.join(out_data_base_dirpath, 'np-{:.2f}_sbr-{:.2f}_{}'.format(curr_mean_nphotons,curr_mean_sbr,file_name))
+
+        out_data_dirpath = os.path.join(out_data_base_dirpath, '{}'.format(exper_type))
+        # out_data_dirpath = out_data_base_dirpath
 
         os.makedirs(out_data_dirpath, exist_ok=True)
         if(saveData):
             print("Saving result Data, this may take a while......")
             out_fname_base = dataDict['coding_params_str']
-            coding_obj = dataDict['coding_obj']
             # np.savez(os.path.join(out_data_dirpath, out_fname_base+'.npz')
             #             , decoded_depths= dataDict['decoded_depths']
             #             , abs_depth_errors= dataDict['abs_depth_errors']
@@ -238,126 +243,161 @@ def saveResults(dataDict,saveData,savePlots,out_data_base_dirpath,file_name):
             #             , transients = dataDict['transients']
             #             , depth_imgs = dataDict['depth_imgs']
             # )
-            np.savez(os.path.join(out_data_dirpath, out_fname_base+'.npz'), data = dataDict)
+            np.save(os.path.join(out_data_dirpath, file_name+'.npy'), dataDict)
 
 
 
 
+        out_dirpath = out_data_dirpath
 
-            if savePlots == 1:
-                print("Saving Results...")
-                sim_params_str = 'np-{:.2f}_sbr-{:.2f}'.format(curr_mean_nphotons, curr_mean_sbr)
-                out_dirpath = os.path.join(out_data_dirpath, sim_params_str)
-                coding_params_str = eval_coding_utils.compose_coding_params_str(coding_id, coding_obj.n_codes, rec_algo, pw_factor)
+        x_labels = np.linspace(0,round(max_depth_val-1000,-3),4)
+        if savePlots == 1:
+            print("Saving Results...")
+            # sim_params_str = 'np-{:.2f}_sbr-{:.2f}'.format(curr_mean_nphotons, curr_mean_sbr)
+            # out_dirpath = os.path.join(out_data_dirpath, sim_params_str)
 
-                plt.figure()
-                plot_utils.update_fig_size(height=5, width=6)
-                img=plt.imshow(decoded_depths.squeeze()*1000, vmin=min_depth_val, vmax=max_depth_val)
+            # coding_params_str = eval_coding_utils.compose_coding_params_str(coding_id, coding_obj.n_codes, rec_algo, pw_factor)
+
+            plt.figure()
+            plot_utils.update_fig_size(height=5, width=6)
+            img=plt.imshow(decoded_depths.squeeze()*1000, vmin=min_depth_val, vmax=max_depth_val)
+            # plt.xticks(x_labels,x_labels)
+            plot_utils.remove_ticks()
+            # plot_utils.set_cbar_ticks(img, cbar_orientation='horizontal',Ticks=x_labels)
+            plot_utils.save_currfig(dirpath=out_dirpath, filename=file_name+'_fullsim', file_ext='pdf')
+            #plt.show()
+            #Errors
+            # plt.figure()
+            # plot_utils.update_fig_size(height=5, width=6)
+            # img=plt.imshow(abs_depth_errors, vmin=min_depth_error_val, vmax=max_depth_error_val)
+            # plot_utils.remove_ticks()
+            # plot_utils.set_cbar_ticks(img, cbar_orientation='horizontal',Ticks=x_labels)
+            # plot_utils.save_currfig(dirpath=out_dirpath, filename=file_name+'_fullsimErrors', file_ext='pdf')
+            # #plt.show()
+
+            plt.figure()
+            img = plt.imshow(np.sum(np.squeeze(c_vals),2),cmap='gray')
+            plot_utils.update_fig_size(height=5, width=6)
+            plot_utils.remove_ticks()
+            # plt.title("Grayscale from Histogram")
+            plot_utils.save_currfig(dirpath=out_dirpath, filename=file_name+'_histGS', file_ext='pdf')
+
+            plt.figure()
+            plot_utils.update_fig_size(height=5, width=6)
+            img=plt.imshow(improc_ops.gamma_tonemap(rgb, gamma=1))
+            plot_utils.remove_ticks()
+            plot_utils.save_currfig(dirpath=out_dirpath, filename=file_name+'nyu'+'_rgb', file_ext='pdf')
+            #plt.show()
+
+            plt.figure()
+            plot_utils.update_fig_size(height=5, width=6)
+            img=plt.imshow(depth*1000, vmin=min_depth_val, vmax=max_depth_val)
+            # plt.xticks(x_labels,x_labels)
+            plot_utils.remove_ticks()
+            plot_utils.set_cbar_ticks(img, cbar_orientation='horizontal',Ticks=x_labels)
+            plot_utils.save_currfig(dirpath=out_dirpath, filename=file_name+'nyu'+'_depths', file_ext='pdf')
+            #plt.show()
+
+            plt.figure()
+            plot_utils.update_fig_size(height=5, width=6)
+            img=plt.imshow(dataDict["mono_raw"]*1000, vmin=min_depth_val, vmax=np.max(dataDict["mono_raw"])*1000)
+            # plt.xticks(np.linspace(0,round((np.max(dataDict["mono_raw"])*1000)-1000,-3),len(x_labels)), np.linspace(0,round((np.max(dataDict["mono_raw"])*1000)-1000,-3),len(x_labels)))
+            plot_utils.remove_ticks()
+
+            # plot_utils.set_cbar_ticks(img, cbar_orientation='horizontal',Ticks=x_labels)
+            plot_utils.save_currfig(dirpath=out_dirpath, filename=file_name+'monocular_depth', file_ext='pdf')
+            # #plt.show()
+        elif savePlots == 2:
+            print("Saving Results...")
+            # sim_params_str = 'np-{:.2f}_sbr-{:.2f}'.format(curr_mean_nphotons, curr_mean_sbr)
+            # out_dirpath = os.path.join(out_data_dirpath, sim_params_str)
+            # coding_params_str = eval_coding_utils.compose_coding_params_str(coding_id, coding_obj.n_codes, rec_algo, pw_factor)
+
+            plt.figure()
+            plot_utils.update_fig_size(height=5, width=6)
+            img=plt.imshow(decoded_depths.squeeze()*1000, vmin=min_depth_val, vmax=max_depth_val)
+            plot_utils.remove_ticks()
+            # plot_utils.set_cbar_ticks(img, cbar_orientation='horizontal',Ticks=x_labels)
+            plot_utils.save_currfig(dirpath=out_dirpath, filename=file_name+'_memDepths', file_ext='pdf')
+            #plt.show()
+
+            # plt.figure()
+            # plot_utils.update_fig_size(height=5, width=6)
+            # img=plt.imshow(abs_depth_errors, vmin=min_depth_error_val, vmax=max_depth_error_val)
+            # plot_utils.remove_ticks()
+            # plot_utils.set_cbar_ticks(img, cbar_orientation='horizontal',Ticks=x_labels)
+            # plot_utils.save_currfig(dirpath=out_dirpath, filename=file_name+'_memErrors', file_ext='pdf')
+            # #plt.show()
+
+            # plt.figure()
+            # img = plt.imshow(np.sum(np.squeeze(c_vals),2),cmap='gray')
+            # plot_utils.remove_ticks()
+            # plt.title("Grayscale from Histogram")
+            # plot_utils.save_currfig(dirpath=out_dirpath, filename=file_name+'_memGS', file_ext='pdf')
+            if 'sparse_depths' in dataDict:
+                from scipy.ndimage import grey_dilation
+                import matplotlib as mpl
+                import copy
+                fig, ax = plt.subplots()
+                img = dataDict['sparse_depths']#np.sum(np.squeeze(c_vals),2)
+                dia_img = grey_dilation(img,size=(7, 7))
+                dia_img = np.ma.masked_where(dia_img==0,dia_img)
+                cmap = copy.copy(mpl.cm.get_cmap('plasma'))
+                cmap.set_bad(color='black')
+                ax.set_facecolor('black')
+                ax.imshow(dia_img,cmap=cmap)
+
                 plot_utils.remove_ticks()
-                plot_utils.set_cbar(img, cbar_orientation='horizontal')
-                plot_utils.save_currfig(dirpath=out_dirpath, filename=coding_params_str+'_depths', file_ext='png')
-                #plt.show()
+                # plt.title("Grayscale from Histogram")
+                plot_utils.save_currfig(dirpath=out_dirpath, filename=file_name+'_sparse', file_ext='pdf')
 
-                plt.figure()
-                plot_utils.update_fig_size(height=5, width=6)
-                img=plt.imshow(abs_depth_errors, vmin=min_depth_error_val, vmax=max_depth_error_val)
+            if 'quant_mono' in dataDict:
+                cmap = plt.get_cmap('plasma')
+                img = plt.imshow(dataDict['quant_mono']*1000,cmap=cmap)
+                plot_utils.set_cbar_ticks(img, cbar_orientation='horizontal',Ticks=x_labels)
                 plot_utils.remove_ticks()
-                plot_utils.set_cbar(img, cbar_orientation='horizontal')
-                plot_utils.save_currfig(dirpath=out_dirpath, filename=coding_params_str+'_deptherrs', file_ext='png')
-                #plt.show()
+                # plt.title("Grayscale from Histogram")
+                plot_utils.save_currfig(dirpath=out_dirpath, filename=file_name+'_quant', file_ext='pdf')
 
-                plt.figure()
-                img = plt.imshow(np.sum(np.squeeze(c_vals),2),cmap='gray')
-                plot_utils.remove_ticks()
-                plt.title("Grayscale from Histogram")
-                plot_utils.save_currfig(dirpath=out_dirpath, filename=coding_params_str+'_histGS', file_ext='png')
+        elif savePlots == 3:
+            print("Saving Results...")
+            # sim_params_str = 'np-{:.2f}_sbr-{:.2f}'.format(curr_mean_nphotons, curr_mean_sbr)
+            # out_dirpath = os.path.join(out_data_dirpath, sim_params_str)
+            # coding_params_str = eval_coding_utils.compose_coding_params_str(coding_id, coding_obj.n_codes, rec_algo, pw_factor)
 
-                plt.figure()
-                plot_utils.update_fig_size(height=5, width=6)
-                img=plt.imshow(improc_ops.gamma_tonemap(rgb, gamma=1))
-                plot_utils.remove_ticks()
-                plot_utils.save_currfig(dirpath=out_dirpath, filename='nyu'+'_rgb', file_ext='png')
-                #plt.show()
+            plt.figure()
+            plot_utils.update_fig_size(height=5, width=6)
+            img=plt.imshow(decoded_depths.squeeze()*1000, vmin=min_depth_val, vmax=max_depth_val)
+            # plt.xticks(x_labels,x_labels)
+            plot_utils.remove_ticks()
+            # plot_utils.set_cbar_ticks(img, cbar_orientation='horizontal',Ticks=x_labels)
+            plot_utils.save_currfig(dirpath=out_dirpath, filename=file_name+'_DSDepths', file_ext='pdf')
+            #plt.show()
 
-                plt.figure()
-                plot_utils.update_fig_size(height=5, width=6)
-                img=plt.imshow(depth*1000, vmin=min_depth_val, vmax=max_depth_val)
-                plot_utils.remove_ticks()
-                plot_utils.set_cbar(img, cbar_orientation='horizontal')
-                plot_utils.save_currfig(dirpath=out_dirpath, filename='nyu'+'_depths', file_ext='png')
-                #plt.show()
+            # plt.figure()
+            # plot_utils.update_fig_size(height=5, width=6)
+            # img=plt.imshow(abs_depth_errors, vmin=min_depth_error_val, vmax=max_depth_error_val)
+            # plot_utils.remove_ticks()
+            # plot_utils.set_cbar_ticks(img, cbar_orientation='horizontal',Ticks=x_labels)
+            # plot_utils.save_currfig(dirpath=out_dirpath, filename=file_name+'_DSDepthsErrors', file_ext='pdf')
+            # #plt.show()
 
-                # if dataDict.get("mono_raw") != None:
-                plt.figure()
-                plot_utils.update_fig_size(height=5, width=6)
-                img=plt.imshow(dataDict["mono_raw"]*1000, vmin=0, vmax=np.max(dataDict["mono_raw"])*1000)
-                plot_utils.remove_ticks()
-                plot_utils.set_cbar(img, cbar_orientation='horizontal')
-                plot_utils.save_currfig(dirpath=out_dirpath, filename='monocular_depth', file_ext='png')
-                #plt.show()
-            elif savePlots == 2:
-                print("Saving Results...")
-                sim_params_str = 'np-{:.2f}_sbr-{:.2f}'.format(curr_mean_nphotons, curr_mean_sbr)
-                out_dirpath = os.path.join(out_data_dirpath, sim_params_str)
-                coding_params_str = eval_coding_utils.compose_coding_params_str(coding_id, coding_obj.n_codes, rec_algo, pw_factor)
-
-                plt.figure()
-                plot_utils.update_fig_size(height=5, width=6)
-                img=plt.imshow(decoded_depths.squeeze()*1000, vmin=min_depth_val, vmax=max_depth_val)
-                plot_utils.remove_ticks()
-                plot_utils.set_cbar(img, cbar_orientation='horizontal')
-                plot_utils.save_currfig(dirpath=out_dirpath, filename=coding_params_str+'_depths', file_ext='png')
-                #plt.show()
-
-                plt.figure()
-                plot_utils.update_fig_size(height=5, width=6)
-                img=plt.imshow(abs_depth_errors, vmin=min_depth_error_val, vmax=max_depth_error_val)
-                plot_utils.remove_ticks()
-                plot_utils.set_cbar(img, cbar_orientation='horizontal')
-                plot_utils.save_currfig(dirpath=out_dirpath, filename=coding_params_str+'_deptherrs', file_ext='png')
-                #plt.show()
-
-                plt.figure()
-                img = plt.imshow(np.sum(np.squeeze(c_vals),2),cmap='gray')
-                plot_utils.remove_ticks()
-                plt.title("Grayscale from Histogram")
-                plot_utils.save_currfig(dirpath=out_dirpath, filename=coding_params_str+'_histGS', file_ext='png')
-
-            elif savePlots == 3:
-                print("Saving Results...")
-                sim_params_str = 'np-{:.2f}_sbr-{:.2f}'.format(curr_mean_nphotons, curr_mean_sbr)
-                out_dirpath = os.path.join(out_data_dirpath, sim_params_str)
-                coding_params_str = eval_coding_utils.compose_coding_params_str(coding_id, coding_obj.n_codes, rec_algo, pw_factor)
-
-                plt.figure()
-                plot_utils.update_fig_size(height=5, width=6)
-                img=plt.imshow(decoded_depths.squeeze()*1000, vmin=min_depth_val, vmax=max_depth_val)
-                plot_utils.remove_ticks()
-                plot_utils.set_cbar(img, cbar_orientation='horizontal')
-                plot_utils.save_currfig(dirpath=out_dirpath, filename=coding_params_str+'_depths', file_ext='png')
-                #plt.show()
-
-                plt.figure()
-                plot_utils.update_fig_size(height=5, width=6)
-                img=plt.imshow(abs_depth_errors, vmin=min_depth_error_val, vmax=max_depth_error_val)
-                plot_utils.remove_ticks()
-                plot_utils.set_cbar(img, cbar_orientation='horizontal')
-                plot_utils.save_currfig(dirpath=out_dirpath, filename=coding_params_str+'_deptherrs', file_ext='png')
-                #plt.show()
-
-                plt.figure()
-                img = plt.imshow(np.sum(np.squeeze(c_vals),2),cmap='gray')
-                plot_utils.remove_ticks()
-                plt.title("Grayscale from Histogram")
-                plot_utils.save_currfig(dirpath=out_dirpath, filename=coding_params_str+'_histGS', file_ext='png')
+            plt.figure()
+            img = plt.imshow(np.sum(np.squeeze(dataDict['c_vals_ds']),2),cmap='gray')
+            plot_utils.remove_ticks()
+            # plt.title("Grayscale from Histogram")
+            plot_utils.save_currfig(dirpath=out_dirpath, filename=file_name+'_DSGS', file_ext='pdf')
 
 
-                plt.figure()
-                plot_utils.update_fig_size(height=5, width=6)
-                img=plt.imshow(dataDict["decoded_depths_ds"]*1000, vmin=min_depth_val, vmax=max_depth_val)
-                plot_utils.remove_ticks()
-                plot_utils.set_cbar(img, cbar_orientation='horizontal')
-                plot_utils.save_currfig(dirpath=out_dirpath, filename='ds_histo', file_ext='png')
-                #plt.show()
+            plt.figure()
+            plot_utils.update_fig_size(height=5, width=6)
+            img=plt.imshow(dataDict["decoded_depths_ds"]*1000, vmin=min_depth_val, vmax=max_depth_val)
+            # plt.xticks(x_labels,x_labels)
+            plot_utils.remove_ticks()
+            # plot_utils.set_cbar_ticks(img, cbar_orientation='horizontal',Ticks=x_labels)
+            plot_utils.save_currfig(dirpath=out_dirpath, filename=file_name+'_DS', file_ext='pdf')
+            #plt.show()
+        else:
+             print("Not Saving Plots")
 
 

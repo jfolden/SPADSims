@@ -5,17 +5,19 @@ import os
 import numpy as np
 import matplotlib as mpl 
 import matplotlib.pyplot as plt
+from matplotlib import rcParams
+
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from IPython.core import debugger
 breakpoint = debugger.set_trace
-
+rcParams['font.weight'] = 'bold'
 #### Local imports
 
 def get_ax_if_none(ax):
 	if(ax is None): return plt.gca()
 	else: return ax
 
-def save_currfig( dirpath = '.', filename = 'curr_fig', file_ext = 'png', use_imsave=False  ):
+def save_currfig( dirpath = '.', filename = 'curr_fig', file_ext = 'pdf', use_imsave=False):
 	# Create directory to store figure if it does not exist
 	os.makedirs(dirpath, exist_ok=True)
 	# Pause to make sure plot is fully rendered and not warnings or errors are thown
@@ -25,14 +27,14 @@ def save_currfig( dirpath = '.', filename = 'curr_fig', file_ext = 'png', use_im
 	if('.{}'.format(file_ext) in  filename): filepath = os.path.join(dirpath, filename)
 	else: filepath = os.path.join(dirpath, filename) + '.{}'.format(file_ext)
 	plt.savefig(filepath, 
-				dpi=None, 
+				dpi=300, 
 				# facecolor='w', 
-				# edgecolor='w',
+				edgecolor='w',
 				# orientation='portrait', 
 				# papertype=None, 
 				transparent=True, 
 				bbox_inches='tight', 
-				# pad_inches=0.1,
+				pad_inches=0.1,
 				# metadata=None 
 				format=file_ext
 				)
@@ -71,7 +73,7 @@ def plot_and_save_rgb(data, out_dirpath='./', out_filename='out_img', min_val=No
 		save_rgb(out_dirpath, out_filename, file_ext=file_ext, rm_ticks=False)
 		if(use_imsave): save_img(data, out_dirpath, out_filename, min_val=min_val, max_val=max_val, file_ext=file_ext)
 
-def set_cbar(img, cbar_orientation='vertical', fontsize=14):
+def set_cbar(img, cbar_orientation='vertical', fontsize=16):
 	fig = plt.gcf()
 	ax = plt.gca()
 	divider = make_axes_locatable(ax)
@@ -80,6 +82,19 @@ def set_cbar(img, cbar_orientation='vertical', fontsize=14):
 		cax = divider.append_axes('right', size='10%', pad=0.05)
 	else: cax = divider.append_axes('bottom', size='7%', pad=0.05)
 	cb = fig.colorbar(img, cax=cax, orientation=cbar_orientation)
+	cb.ax.tick_params(labelsize=fontsize)
+	plt.sca(ax) # Set axis back to what it was
+	# fig.colorbar(img, orientation=cbar_orientation, ax=ax)
+
+def set_cbar_ticks(img, cbar_orientation='horizontal',Ticks=None,fontsize=16):
+	fig = plt.gcf()
+	ax = plt.gca()
+	divider = make_axes_locatable(ax)
+	if(cbar_orientation == 'vertical'): 
+		# cax = divider.append_axes('right', size='4%', pad=0.05)
+		cax = divider.append_axes('right', size='10%', pad=0.05)
+	else: cax = divider.append_axes('bottom', size='7%', pad=0.05)
+	cb = fig.colorbar(img, cax=cax, ticks=Ticks,orientation=cbar_orientation)
 	cb.ax.tick_params(labelsize=fontsize)
 	plt.sca(ax) # Set axis back to what it was
 	# fig.colorbar(img, orientation=cbar_orientation, ax=ax)

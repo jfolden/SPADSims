@@ -66,6 +66,19 @@ fnames = all_files[np.random.randint(0,len(all_files),num_files_to_sim)]
 
 # fnames_depth = ["F:\\Research\\Collision_Prediction\\SPAD\\1\\depth\\29.png"]
 # fnames = ["F:\\Research\\Collision_Prediction\\SPAD\\1\\rgb\\29.png"]
+# fnames = ["C:\\Users\\Justin\\tensorflow_datasets\\downloads\\extracted\\NYUv2\\nyudepthv2\\val\\official\\00636.h5"]
+# val/00355, val/00034, val/00315, val/00431, val/01170
+fnames = ["C:\\Users\\Justin\\tensorflow_datasets\\downloads\\extracted\\NYUv2\\nyudepthv2\\val\\official\\00355.h5",
+          "C:\\Users\\Justin\\tensorflow_datasets\\downloads\\extracted\\NYUv2\\nyudepthv2\\val\\official\\00034.h5",
+          "C:\\Users\\Justin\\tensorflow_datasets\\downloads\\extracted\\NYUv2\\nyudepthv2\\val\\official\\00315.h5",
+          "C:\\Users\\Justin\\tensorflow_datasets\\downloads\\extracted\\NYUv2\\nyudepthv2\\val\\official\\00431.h5",
+          "C:\\Users\\Justin\\tensorflow_datasets\\downloads\\extracted\\NYUv2\\nyudepthv2\\val\\official\\01170.h5",
+          "C:\\Users\\Justin\\tensorflow_datasets\\downloads\\extracted\\NYUv2\\nyudepthv2\\val\\official\\00532.h5",
+          "C:\\Users\\Justin\\tensorflow_datasets\\downloads\\extracted\\NYUv2\\nyudepthv2\\val\\official\\00688.h5",
+          "C:\\Users\\Justin\\tensorflow_datasets\\downloads\\extracted\\NYUv2\\nyudepthv2\\val\\official\\00775.h5",
+          "C:\\Users\\Justin\\tensorflow_datasets\\downloads\\extracted\\NYUv2\\nyudepthv2\\val\\official\\00538.h5",
+          "C:\\Users\\Justin\\tensorflow_datasets\\downloads\\extracted\\NYUv2\\nyudepthv2\\val\\official\\00387.h5",
+          "C:\\Users\\Justin\\tensorflow_datasets\\downloads\\extracted\\NYUv2\\nyudepthv2\\val\\official\\01431.h5"]
 
 
 curr_date = datetime.now()
@@ -90,13 +103,15 @@ for P in tqdm(range(num_files_to_sim),desc="Total Sim"):
     ds_v_dfovea_metrics = helpers.RunningAverageDict()
 
     fnames_split0 = os.path.split(fnames[P])
-    fnames_split1 = os.path.split(fnames_split0[0]) 
+    # fnames_split1 = os.path.split(fnames_split0[0])
+    nyu_val_number = fnames_split0[1][:-3] 
+
     
-    out_data_base_dirpath = 'F:/Research/compressive-spad-lidar-cvpr22/data/nyu_results/{}/{checks}'.format(daymonthyear,
+    out_data_base_dirpath = 'D:/secOne/nyu_results/{}/{checks}'.format(daymonthyear,
                                                                                                             checks="win{}_dsbins{}/".format(args.win_size,args.ds_bins) 
                                                                                                             if (args.mem_fovea and args.depth_fovea) 
                                                                                                             else "")# "win{}".format(args.win_size)
-    out_data_dirpath = os.path.join(out_data_base_dirpath,'{checks}_{}/{}'.format(curr_date.strftime("%H%M"),fnames_split0[1][:-3],checks="local_scale" if args.local_scale else "general_scale"))
+    out_data_dirpath = os.path.join(out_data_base_dirpath,'{checks}_{}/{}'.format(curr_date.strftime("%H%M"),nyu_val_number,checks="local_scale" if args.local_scale else "general_scale"))
     #NYU Load
     [rgb_gt,depth_gt,h,w] = helpers.load_nyu(fnames[P])
     #Carla Load
@@ -135,12 +150,15 @@ for P in tqdm(range(num_files_to_sim),desc="Total Sim"):
         curve = np.poly1d(gen_scale_data['curve'])
         gen_max = gen_scale_data['max']
         gen_min = gen_scale_data['min']
-        predDepth_gt_raw = np.clip(predDepth_gt_raw,a_min=0,a_max=10) 
+        predDepth_gt_raw = np.clip(predDepth_gt_raw,a_min=0,a_max=10)
         predDepth_gt_raw = (predDepth_gt_raw-gen_min)/(gen_max-gen_min)
         predDepth_gt_raw = curve(predDepth_gt_raw)
     print('gt_min:{}, gt_max:{}, \n pred_min: {}, pred_max: {}'.format(np.min(depth_gt),np.max(depth_gt),np.min(predDepth_gt_raw),np.max(predDepth_gt_raw)))
     print('gt_mean:{}, pred_mean: {},'.format(np.mean(depth_gt),np.mean(predDepth_gt_raw)))
-
+    
+    #Bad Scaling no cookie
+    if (np.max(predDepth_gt_raw) > 10) or (np.min(predDepth_gt_raw)<0):
+        continue
 
     # predDepth_gt_raw = preprocessing.minmax_scale(predDepth_gt_raw,(0,np.max(depth_gt)))
     # abs_errors_ = np.abs(depth_gt- predDepth_gt_raw)*1000
@@ -235,11 +253,11 @@ for P in tqdm(range(num_files_to_sim),desc="Total Sim"):
 
     if args.save_results:
         if P % (100 / args.save_percent) == 0 and P // (100 / args.save_percent) < num_images_to_save:
-            sim.saveResults(data_gt,saveData=True,savePlots=1,out_data_base_dirpath=out_data_dirpath,file_name="fullRes")
+            sim.saveResults(data_gt,saveData=True,savePlots=1,out_data_base_dirpath=out_data_dirpath,exper_type="fullRes",file_name=nyu_val_number)
             if args.mem_fovea:
-                sim.saveResults(data_mem,saveData=True,savePlots=2,out_data_base_dirpath=out_data_dirpath,file_name="memoryFovea")
+                sim.saveResults(data_mem,saveData=True,savePlots=2,out_data_base_dirpath=out_data_dirpath,exper_type="memoryFovea",file_name=nyu_val_number)
             if args.depth_fovea:
-                sim.saveResults(data_ds,saveData=True,savePlots=3,out_data_base_dirpath=out_data_dirpath,file_name="depthFovea")
+                sim.saveResults(data_ds,saveData=True,savePlots=3,out_data_base_dirpath=out_data_dirpath,exper_type="depthFovea",file_name=nyu_val_number)
 
 
 

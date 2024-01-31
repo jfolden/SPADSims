@@ -321,7 +321,10 @@ def max_gaussian_center_of_mass_mle(transient, tbins=None, sigma_tbins = 1):
 	# start_tbin = np.clip(argmax_tbin - int(np.ceil(2*sigma_tbins)), 0, n_tbins)
 	# end_tbin = np.clip(argmax_tbin + int(np.ceil(2*sigma_tbins)) + 1, 0, n_tbins)
 	start_tbin = argmax_tbin - int(np.ceil(2*sigma_tbins))
+	# print(f'start_tbin:{start_tbin}')
 	end_tbin = argmax_tbin + int(np.ceil(2*sigma_tbins)) + 1
+	# print(f'end_tbin:{end_tbin}')
+
 	# Create a dummy tbin array if tbins are not given
 	if(tbins is None): tbins = np.arange(0, n_tbins) 
 	assert(transient.shape[-1] == len(tbins)), 'transient and tbins should have the same number of elements'
@@ -329,6 +332,8 @@ def max_gaussian_center_of_mass_mle(transient, tbins=None, sigma_tbins = 1):
 	center_of_mass_mle = np.zeros((n_elems,))
 	extended_tbins = get_extended_domain(tbins, axis=-1)
 	extended_transient_noamb = extend_tensor_circularly(transient_noamb, axis=-1)
+	# print(extended_transient_noamb.shape)
+	# print(extended_transient_noamb.dtype)
 	# for i in range(n_elems):
 	# 	tbin_vec = tbins[start_tbin[i]:end_tbin[i]]
 	# 	transient_vec = transient_noamb[i, start_tbin[i]:end_tbin[i]]

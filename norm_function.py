@@ -110,24 +110,24 @@ np.savez("poly3_gen_scale_all.npz",curve=curve,max=np.max(Pred_depths),min=np.mi
 # c_fovea = data_fovea['c_vals']
 # c_norm = data_norm['c_vals'].squeeze()
 
-# fig = plt.figure()
-# ax1 = fig.add_subplot(1,2,1)
-# ax2 = fig.add_subplot(1,2,2)
-# #ax3 = fig.add_subplot(1,3,3)
-# ax1.set_ylim([0,1200])
-# ax2.set_ylim([0,1200])
-# line1, = ax1.plot(np.squeeze(c_norm[1,1,:]))
-# line2, = ax2.plot((c_fovea[1,1,:]))
-# for i in range(240):
-#     for j in range(320):
-#         line1.set_ydata(np.squeeze(c_norm[i,j,:]))
-#         line2.set_ydata(np.squeeze(c_fovea[i,j,:]))
-#         fig.canvas.draw()
+fig = plt.figure()
+ax1 = fig.add_subplot(1,2,1)
+ax2 = fig.add_subplot(1,2,2)
+#ax3 = fig.add_subplot(1,3,3)
+ax1.set_ylim([0,1200])
+ax2.set_ylim([0,1200])
+line1, = ax1.plot(np.squeeze(c_norm[1,1,:]))
+line2, = ax2.plot((c_fovea[1,1,:]))
+for i in range(240):
+    for j in range(320):
+        line1.set_ydata(np.squeeze(c_norm[i,j,:]))
+        line2.set_ydata(np.squeeze(c_fovea[i,j,:]))
+        fig.canvas.draw()
     
 
-#         # to flush the GUI events
-#         fig.canvas.flush_events()
-#         time.sleep(0.01)
+        # to flush the GUI events
+        fig.canvas.flush_events()
+        time.sleep(0.01)
         
 # mask_fovea = 0
 # fovea_sum = np.sum(c_fovea,-1)
