@@ -62,7 +62,6 @@ def decode_peak(coding_obj, c_vals, coding_id, rec_algo, pw_factor):
 	# print("Decoding peak.. Assuming Gaussian for Gated, Identity and Timestamp")
 	if((coding_id == 'Gated') or (coding_id == 'Identity') or (coding_id == 'Timestamp')):
 		# print('MaxGauss: {}'.format(pw_factor))
-		print(c_vals.shape)
 		decoded_depths = coding_obj.maxgauss_peak_decoding(c_vals, gauss_sigma=pw_factor, rec_algo_id=rec_algo)
 		# decoded_depths = coding_obj.max_peak_decoding(c_vals, rec_algo_id=rec_algo)
 	elif(coding_id == 'SingleFourier'):

@@ -85,7 +85,10 @@ def simSPAD(args,**kwargs):
     (min_depth_error_val, max_depth_error_val ) = (0, 110)
     #convert depth map to transient img
     [transients,nz_ind] = tof_utils.depthmap2tirfLumi(depth,n_tbins,delta_depth,lumi)
+    if 'histo' in kwargs:
+        transients = kwargs['histo']
     # transients = tof_utils.depthmap2tirf(depth,n_tbins,delta_depth)
+    # print(transients.shape)
 
 
     #create the sim objects
@@ -251,6 +254,7 @@ def saveResults(dataDict,saveData,savePlots,out_data_base_dirpath,exper_type,fil
         out_dirpath = out_data_dirpath
 
         x_labels = np.linspace(0,round(max_depth_val-1000,-3),4)
+        export_extension = 'png'
         if savePlots == 1:
             print("Saving Results...")
             # sim_params_str = 'np-{:.2f}_sbr-{:.2f}'.format(curr_mean_nphotons, curr_mean_sbr)
@@ -264,7 +268,7 @@ def saveResults(dataDict,saveData,savePlots,out_data_base_dirpath,exper_type,fil
             # plt.xticks(x_labels,x_labels)
             plot_utils.remove_ticks()
             # plot_utils.set_cbar_ticks(img, cbar_orientation='horizontal',Ticks=x_labels)
-            plot_utils.save_currfig(dirpath=out_dirpath, filename=file_name+'_fullsim', file_ext='pdf')
+            plot_utils.save_currfig(dirpath=out_dirpath, filename=file_name+'_fullsim', file_ext=export_extension)
             #plt.show()
             #Errors
             # plt.figure()
@@ -272,7 +276,7 @@ def saveResults(dataDict,saveData,savePlots,out_data_base_dirpath,exper_type,fil
             # img=plt.imshow(abs_depth_errors, vmin=min_depth_error_val, vmax=max_depth_error_val)
             # plot_utils.remove_ticks()
             # plot_utils.set_cbar_ticks(img, cbar_orientation='horizontal',Ticks=x_labels)
-            # plot_utils.save_currfig(dirpath=out_dirpath, filename=file_name+'_fullsimErrors', file_ext='pdf')
+            # plot_utils.save_currfig(dirpath=out_dirpath, filename=file_name+'_fullsimErrors', file_ext=export_extension)
             # #plt.show()
 
             plt.figure()
@@ -280,13 +284,13 @@ def saveResults(dataDict,saveData,savePlots,out_data_base_dirpath,exper_type,fil
             plot_utils.update_fig_size(height=5, width=6)
             plot_utils.remove_ticks()
             # plt.title("Grayscale from Histogram")
-            plot_utils.save_currfig(dirpath=out_dirpath, filename=file_name+'_histGS', file_ext='pdf')
+            plot_utils.save_currfig(dirpath=out_dirpath, filename=file_name+'_histGS', file_ext=export_extension)
 
             plt.figure()
             plot_utils.update_fig_size(height=5, width=6)
             img=plt.imshow(improc_ops.gamma_tonemap(rgb, gamma=1))
             plot_utils.remove_ticks()
-            plot_utils.save_currfig(dirpath=out_dirpath, filename=file_name+'nyu'+'_rgb', file_ext='pdf')
+            plot_utils.save_currfig(dirpath=out_dirpath, filename=file_name+'nyu'+'_rgb', file_ext=export_extension)
             #plt.show()
 
             plt.figure()
@@ -294,8 +298,8 @@ def saveResults(dataDict,saveData,savePlots,out_data_base_dirpath,exper_type,fil
             img=plt.imshow(depth*1000, vmin=min_depth_val, vmax=max_depth_val)
             # plt.xticks(x_labels,x_labels)
             plot_utils.remove_ticks()
-            plot_utils.set_cbar_ticks(img, cbar_orientation='horizontal',Ticks=x_labels)
-            plot_utils.save_currfig(dirpath=out_dirpath, filename=file_name+'nyu'+'_depths', file_ext='pdf')
+            # plot_utils.set_cbar_ticks(img, cbar_orientation='horizontal',Ticks=x_labels)
+            plot_utils.save_currfig(dirpath=out_dirpath, filename=file_name+'nyu'+'_depths', file_ext=export_extension)
             #plt.show()
 
             plt.figure()
@@ -305,7 +309,7 @@ def saveResults(dataDict,saveData,savePlots,out_data_base_dirpath,exper_type,fil
             plot_utils.remove_ticks()
 
             # plot_utils.set_cbar_ticks(img, cbar_orientation='horizontal',Ticks=x_labels)
-            plot_utils.save_currfig(dirpath=out_dirpath, filename=file_name+'monocular_depth', file_ext='pdf')
+            plot_utils.save_currfig(dirpath=out_dirpath, filename=file_name+'monocular_depth', file_ext=export_extension)
             # #plt.show()
         elif savePlots == 2:
             print("Saving Results...")
@@ -318,7 +322,7 @@ def saveResults(dataDict,saveData,savePlots,out_data_base_dirpath,exper_type,fil
             img=plt.imshow(decoded_depths.squeeze()*1000, vmin=min_depth_val, vmax=max_depth_val)
             plot_utils.remove_ticks()
             # plot_utils.set_cbar_ticks(img, cbar_orientation='horizontal',Ticks=x_labels)
-            plot_utils.save_currfig(dirpath=out_dirpath, filename=file_name+'_memDepths', file_ext='pdf')
+            plot_utils.save_currfig(dirpath=out_dirpath, filename=file_name+'_memDepths', file_ext=export_extension)
             #plt.show()
 
             # plt.figure()
@@ -326,14 +330,14 @@ def saveResults(dataDict,saveData,savePlots,out_data_base_dirpath,exper_type,fil
             # img=plt.imshow(abs_depth_errors, vmin=min_depth_error_val, vmax=max_depth_error_val)
             # plot_utils.remove_ticks()
             # plot_utils.set_cbar_ticks(img, cbar_orientation='horizontal',Ticks=x_labels)
-            # plot_utils.save_currfig(dirpath=out_dirpath, filename=file_name+'_memErrors', file_ext='pdf')
+            # plot_utils.save_currfig(dirpath=out_dirpath, filename=file_name+'_memErrors', file_ext=export_extension)
             # #plt.show()
 
             # plt.figure()
             # img = plt.imshow(np.sum(np.squeeze(c_vals),2),cmap='gray')
             # plot_utils.remove_ticks()
             # plt.title("Grayscale from Histogram")
-            # plot_utils.save_currfig(dirpath=out_dirpath, filename=file_name+'_memGS', file_ext='pdf')
+            # plot_utils.save_currfig(dirpath=out_dirpath, filename=file_name+'_memGS', file_ext=export_extension)
             if 'sparse_depths' in dataDict:
                 from scipy.ndimage import grey_dilation
                 import matplotlib as mpl
@@ -349,7 +353,7 @@ def saveResults(dataDict,saveData,savePlots,out_data_base_dirpath,exper_type,fil
 
                 plot_utils.remove_ticks()
                 # plt.title("Grayscale from Histogram")
-                plot_utils.save_currfig(dirpath=out_dirpath, filename=file_name+'_sparse', file_ext='pdf')
+                plot_utils.save_currfig(dirpath=out_dirpath, filename=file_name+'_sparse', file_ext=export_extension)
 
             if 'quant_mono' in dataDict:
                 cmap = plt.get_cmap('plasma')
@@ -357,7 +361,7 @@ def saveResults(dataDict,saveData,savePlots,out_data_base_dirpath,exper_type,fil
                 plot_utils.set_cbar_ticks(img, cbar_orientation='horizontal',Ticks=x_labels)
                 plot_utils.remove_ticks()
                 # plt.title("Grayscale from Histogram")
-                plot_utils.save_currfig(dirpath=out_dirpath, filename=file_name+'_quant', file_ext='pdf')
+                plot_utils.save_currfig(dirpath=out_dirpath, filename=file_name+'_quant', file_ext=export_extension)
 
         elif savePlots == 3:
             print("Saving Results...")
@@ -371,7 +375,7 @@ def saveResults(dataDict,saveData,savePlots,out_data_base_dirpath,exper_type,fil
             # plt.xticks(x_labels,x_labels)
             plot_utils.remove_ticks()
             # plot_utils.set_cbar_ticks(img, cbar_orientation='horizontal',Ticks=x_labels)
-            plot_utils.save_currfig(dirpath=out_dirpath, filename=file_name+'_DSDepths', file_ext='pdf')
+            plot_utils.save_currfig(dirpath=out_dirpath, filename=file_name+'_DSDepths', file_ext=export_extension)
             #plt.show()
 
             # plt.figure()
@@ -379,14 +383,14 @@ def saveResults(dataDict,saveData,savePlots,out_data_base_dirpath,exper_type,fil
             # img=plt.imshow(abs_depth_errors, vmin=min_depth_error_val, vmax=max_depth_error_val)
             # plot_utils.remove_ticks()
             # plot_utils.set_cbar_ticks(img, cbar_orientation='horizontal',Ticks=x_labels)
-            # plot_utils.save_currfig(dirpath=out_dirpath, filename=file_name+'_DSDepthsErrors', file_ext='pdf')
+            # plot_utils.save_currfig(dirpath=out_dirpath, filename=file_name+'_DSDepthsErrors', file_ext=export_extension)
             # #plt.show()
 
             plt.figure()
             img = plt.imshow(np.sum(np.squeeze(dataDict['c_vals_ds']),2),cmap='gray')
             plot_utils.remove_ticks()
             # plt.title("Grayscale from Histogram")
-            plot_utils.save_currfig(dirpath=out_dirpath, filename=file_name+'_DSGS', file_ext='pdf')
+            plot_utils.save_currfig(dirpath=out_dirpath, filename=file_name+'_DSGS', file_ext=export_extension)
 
 
             plt.figure()
@@ -395,7 +399,7 @@ def saveResults(dataDict,saveData,savePlots,out_data_base_dirpath,exper_type,fil
             # plt.xticks(x_labels,x_labels)
             plot_utils.remove_ticks()
             # plot_utils.set_cbar_ticks(img, cbar_orientation='horizontal',Ticks=x_labels)
-            plot_utils.save_currfig(dirpath=out_dirpath, filename=file_name+'_DS', file_ext='pdf')
+            plot_utils.save_currfig(dirpath=out_dirpath, filename=file_name+'_DS', file_ext=export_extension)
             #plt.show()
         else:
              print("Not Saving Plots")

@@ -125,6 +125,41 @@ def load_nyu(path):
     [h,w] = np.shape(depth)
     return(rgb,depth,h,w)
 
+def load_mat(path,**kwargs):
+    import scipy.io as scio
+    from scipy.sparse import csc_matrix
+    # Load NYU from file, restructure rgb from (3,N,M) to (N,M,3)
+    data = scio.loadmat(path)
+    I = data['cam_processed_data']
+    H = data['spad_processed_data']
+    im = I[0,0]
+    h = H[0,0].toarray()
+    intensity = np.zeros([len(I),im.shape[0],im.shape[1],3]).astype(np.uint8())
+    histo = np.zeros([len(I),256,256,h.shape[0]])
+    if 'all' in kwargs:
+        for i in range(len(I)):
+            im = I[i,0]
+            #normalize the image
+            im = (im * (255/im.max())).astype(np.uint8())
+            im = np.stack((im,)*3, axis=-1)
+            intensity[i] = im.astype(np.uint8)
+            h = H[i,0].toarray()
+            histo[i] = np.reshape(h,[h.shape[0],256,256]).transpose(-1,1,0)
+    else:
+        im = I[0,0]
+        im = im.astype(float)
+        #normalize the image
+        im = (im * (255/im.max())).astype(np.uint8())
+        im = np.stack((im,)*3, axis=-1)
+        intensity[0] = im.astype(np.uint8)
+        h = H[0,0].toarray()
+        histo[0] = np.reshape(h,[h.shape[0],256,256]).transpose(-1,1,0)
+
+
+            
+    [c,h,w,bins] = histo.shape
+    return(intensity,histo,bins,h,w)
+
 def loadModel():
     #load in model
     conf = get_config("zoedepth_nk", "infer",dataset='nyu')
@@ -328,11 +363,14 @@ class optSelect:
 
 def local_scale(gt,pred,n_pts):
     opt = optSelect(gt)
-    pred = np.clip(pred,a_min=0,a_max=10)
+    # pred = np.clip(pred,a_min=0,a_max=10)
+    pred = np.clip(pred,a_min=0,a_max=6)
     print(np.max(pred))
     coords = opt.optimize_pixel_locations(n_pts)
     gt_values = gt[coords[:,0],coords[:,1]]
+    print(gt_values)
     pred_values = pred[coords[:,0],coords[:,1]]
+    print(pred_values)
 
     poly_coef = np.polyfit(pred_values,gt_values,2)
     curve = np.poly1d(poly_coef)

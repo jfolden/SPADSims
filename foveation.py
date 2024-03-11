@@ -24,6 +24,7 @@ def fovea_window(window_size,histo,nz_indi):
     '''
     Make a window around each transient
     '''
+    print(histo.shape)
     win = window_size // 2
     histo = np.squeeze(histo)
     n_tbins = histo.shape[-1]
@@ -40,7 +41,12 @@ def fovea_window(window_size,histo,nz_indi):
                 win_t_start[i,j] = n_tbins-window_size
             else:
                 fovea_data[i,j,:] = histo[i,j,ind-win:ind+win]
+                if not np.any(histo[i,j,:]):
+                    print(f'FULL WTF {i}, {j}')
                 win_t_start[i,j] = ind-win
+
+            if not np.any(fovea_data[i,j,:]):
+                print(f'whatisgoingon{i},{j}')
 
     return(fovea_data,win_t_start.astype(np.int))
 
