@@ -24,6 +24,37 @@ def fovea_window(window_size,histo,nz_indi):
     '''
     Make a window around each transient
     '''
+    print(histo.shape)
+    win = window_size // 2
+    histo = np.squeeze(histo)
+    n_tbins = histo.shape[-1]
+    fovea_data = np.zeros((histo.shape[0],histo.shape[1],window_size))
+    win_t_start = np.zeros((histo.shape[0],histo.shape[1]))
+    for i in range(histo.shape[0]):
+        for j in range(histo.shape[1]):
+            ind = nz_indi[i,j]
+            if ind-win <= 0:
+                fovea_data[i,j,:] = histo[i,j,0:window_size]
+                win_t_start[i,j] = 0
+            elif ind+win >= n_tbins:
+                fovea_data[i,j,:] = histo[i,j,n_tbins-window_size:n_tbins]
+                win_t_start[i,j] = n_tbins-window_size
+            else:
+                fovea_data[i,j,:] = histo[i,j,ind-win:ind+win]
+                if not np.any(histo[i,j,:]):
+                    print(f'FULL WTF {i}, {j}')
+                win_t_start[i,j] = ind-win
+
+            if not np.any(fovea_data[i,j,:]):
+                print(f'whatisgoingon{i},{j}')
+
+    return(fovea_data,win_t_start.astype(np.int))
+
+
+def fovea_window_threshold(window_size,histo,nz_indi,**kwargs):
+    '''
+    Make a window around each transient
+    '''
     win = window_size // 2
     histo = np.squeeze(histo)
     n_tbins = histo.shape[-1]
@@ -42,6 +73,54 @@ def fovea_window(window_size,histo,nz_indi):
                 fovea_data[i,j,:] = histo[i,j,ind-win:ind+win]
                 win_t_start[i,j] = ind-win
 
+
+
+    #Create signal zero every where except where the window lies
+
+    try:
+        if 'threshold' in kwargs:
+            num_pixels_cheated = 0
+            index = []
+            win_t_start = win_t_start.astype(int)
+            full_sig = np.zeros((fovea_data.shape[0],fovea_data.shape[1],kwargs['n_tbins']))
+            for i in range(fovea_data.shape[0]):
+                for j in range(fovea_data.shape[1]):
+                    if np.max(fovea_data[i,j,:]) < kwargs['threshold']:
+                        index.append((i,j))
+                        num_pixels_cheated += 1
+                        full_sig[i,j,:] = histo[i,j,:]
+                        win_t_start[i,j] = 0
+                    else:
+                        full_sig[i,j,win_t_start[i,j]:win_t_start[i,j]+fovea_data.shape[-1]] = fovea_data[i,j,:]
+            # full_sig[full_sig == 0] = np.random.randint(low=0, high=3, size=np.sum(full_sig == 0))
+    except ValueError as e:
+        print(fovea_data.shape[-1])
+
+
+    return(fovea_data,win_t_start,full_sig,num_pixels_cheated,index)
+
+def fovea_window_flow(window_size,histo,nz_indi,push_pull):
+    '''
+    Make a window around each transient
+    '''
+    win = window_size // 2
+    histo = np.squeeze(histo)
+    n_tbins = histo.shape[-1]
+    fovea_data = np.zeros((histo.shape[0],histo.shape[1],window_size))
+    win_t_start = np.zeros((histo.shape[0],histo.shape[1]))
+    for i in range(histo.shape[0]):
+        for j in range(histo.shape[1]):
+            ind = nz_indi[i,j] + push_pull[i,j] #50*((push_pull[i,j]//(push_pull[i,j]+1e-6)).astype(int))
+            if ind-win <= 0:
+                fovea_data[i,j,:] = histo[i,j,0:window_size]
+                win_t_start[i,j] = 0
+            elif ind+win >= n_tbins:
+                fovea_data[i,j,:] = histo[i,j,n_tbins-window_size:n_tbins]
+                win_t_start[i,j] = n_tbins-window_size
+            else:
+                fovea_data[i,j,:] = histo[i,j,ind-win:ind+win]
+                win_t_start[i,j] = ind-win 
+
     return(fovea_data,win_t_start.astype(np.int))
 
 def gen_full_sig(fovea_data,win_t_start,nt_bins):
@@ -50,10 +129,13 @@ def gen_full_sig(fovea_data,win_t_start,nt_bins):
     '''
     #Create signal zero every where except where the window lies
     full_sig = np.zeros((fovea_data.shape[0],fovea_data.shape[1],nt_bins))
-    for i in range(fovea_data.shape[0]):
-        for j in range(fovea_data.shape[1]):
-            full_sig[i,j,win_t_start[i,j]:win_t_start[i,j]+fovea_data.shape[-1]] = fovea_data[i,j,:]
-
+    try:
+        for i in range(fovea_data.shape[0]):
+            for j in range(fovea_data.shape[1]):
+                full_sig[i,j,win_t_start[i,j]:win_t_start[i,j]+fovea_data.shape[-1]] = fovea_data[i,j,:]
+        # full_sig[full_sig == 0] = np.random.randint(low=0, high=3, size=np.sum(full_sig == 0))
+    except ValueError as e:
+        print(fovea_data.shape[-1])
     return(full_sig)
 
 def gen_full_sig_ds(fovea_data,win_t_start,nt_bins,full_bin_res,ds_bin_res):
@@ -71,6 +153,12 @@ def gen_full_sig_ds(fovea_data,win_t_start,nt_bins,full_bin_res,ds_bin_res):
             full_sig[i,j,idx:idx+fovea_data.shape[-1]] = fovea_data[i,j,:]
 
     return(full_sig)
+
+def quantize(dmap,num_bins):
+    hist, bins = np.histogram(dmap.flatten(), bins=num_bins)
+    quant_dmap_bins = np.digitize(dmap, bins,right=True)
+    quant_dmap_depths = bins[quant_dmap_bins]
+    return(quant_dmap_bins,quant_dmap_depths,bins)
 
 
 
@@ -164,4 +252,93 @@ def depth_replacement(low_histo,high_histo,coords):
         y,x = coord
         out[x,y,:] = high_histo[x,y,:]
     return out
+
+
+def rand_pixel_per_bin(hist_bins, quantized_image,num_pix_per_bin,smartChoice):
+    # Ensure hist_bins and quantized_image have the same number of bins
+    assert len(hist_bins) == (np.max(quantized_image) + 1), "Number of bins in hist_bins must match the quantized_image"
+
+    # Get unique quantization bin values
+    unique_bins = np.unique(quantized_image)
+
+    # Initialize lists to store randomly chosen x and y coordinates per bin
+    coords = np.zeros((num_pix_per_bin,2,len(unique_bins)),dtype=int)
+
+    # Loop through each quantization bin
+    for i,bin_value in enumerate(unique_bins):
+        # Create a mask for the current bin
+        bin_mask = (quantized_image == bin_value)
+
+        # Get indices of non-zero elements in the bin mask
+        non_zero_indices = np.argwhere(bin_mask)
+
+        # Randomly choose one pixel location for the current bin
+        if len(non_zero_indices) > 0:
+            if smartChoice:
+                random_index = np.linspace(np.min(non_zero_indices),np.max(non_zero_indices),num=num_pix_per_bin).astype(int)
+            else:
+                random_index = np.random.choice(len(non_zero_indices),size=num_pix_per_bin,replace=True)
+            random_pixel_location = (non_zero_indices[random_index])
+            coords[:,:,i] = random_pixel_location
+
+
+    return coords
+
+def spatial_windows(fovea_data,win_t_start,coords,n_tbins,quant_bins):
+
+
+    '''
+    Generate the full signal from the fovea window
+    '''
+    #Create signal zero every where except where the window lies
+    full_sig = np.zeros((fovea_data.shape[0],fovea_data.shape[1],n_tbins))
+    try:
+        for i in range(coords.shape[-1]-1):
+                bin_windows = fovea_data[coords[:,0,i],coords[:,1,i],:]
+                bin_starts = win_t_start[coords[:,0,i],coords[:,1,i]]
+                for j in range(len(bin_starts)):
+                    full_sig[coords[j,0,i],coords[j,1,i],bin_starts[j]:bin_starts[j]+fovea_data.shape[2]] = bin_windows[j]
+                
+                # full_sig[inds[0],inds[1],bin_starts[i]:bin_starts[i]+fovea_data.shape[-1]] = bin_windows[i]
+        # full_sig[full_sig == 0] = np.random.randint(low=0, high=3, size=np.sum(full_sig == 0))
     
+    except ValueError as e:
+        print(e)
+    return(full_sig)
+
+def spatial_average(depth_img,coords,quant_bins,checkmin):
+    prev_d = 0
+    filled_depth = depth_img.copy()
+    for i in range(quant_bins.max()):#quant_bins.max()+1 ????
+        bin_inds = np.where(quant_bins==i)
+
+        d_vals = np.sort(depth_img[coords[:,0,i],coords[:,1,i]])
+        # print(d_vals)
+        
+        if i == 0:
+            avg_dval = np.min((depth_img[depth_img>0]))
+        else:
+            # avg_dval = d_vals[5]
+            avg_dval = np.min(d_vals)
+        # if avg_dval.any() < prev_d:
+        #     loop = True
+        #     k = 0
+        #     while loop:
+        #         avg_dval = depth_img[k]
+        #         k+=1
+        #         if avg_dval.any() > prev_d:
+        #             loop = False
+        k = 0
+        if checkmin:
+            while avg_dval < prev_d:
+                avg_dval = d_vals[k]
+                k+=1
+                if k >= len(d_vals)-1:
+                    break
+        
+      
+        filled_depth[bin_inds[0],bin_inds[1]] = avg_dval
+        prev_d = avg_dval
+        # print(prev_d)
+    return(filled_depth)
+        
